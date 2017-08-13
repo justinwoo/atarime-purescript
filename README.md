@@ -8,4 +8,4 @@ Named because "atari" (hit/success) is a substring of "atarime" (dried squid)
 
 ## In action:
 
-![](http://i.imgur.com/UcIVqeE.png)
+![](http://i.imgur.com/2ayo5iv.png)

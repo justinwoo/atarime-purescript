@@ -8,7 +8,7 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (log)
 import Control.Monad.Except (runExcept)
-import Data.Array (intercalate, take)
+import Data.Array (intercalate, reverse, take)
 import Data.Either (Either(..))
 import Data.Foreign.NullOrUndefined (NullOrUndefined(..))
 import Data.Maybe (Maybe(..))
@@ -96,7 +96,7 @@ main = launchAff do
             output = case runExcept $ readJSON result of
               Right (lr :: LookupResponse) ->
                 "Got results! You might try these: " <>
-                  (intercalate "\n" $ unwrap <$> take 10 lr.results)
+                  (intercalate "\n" $ unwrap <$> take 10 (reverse lr.results))
               Left e ->
                 "Couldn't parse non-result JSON: " <> show result
           liftEff <<< push <<< wrap $ output

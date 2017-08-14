@@ -19,7 +19,7 @@ import Milkis (defaultFetchOptions, fetch, text)
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (readTextFile)
 import Simple.JSON (class ReadForeign, readJSON)
-import TelegramBot (Message(Message), connect, onMessage, sendMessage)
+import TelegramBot (connect, onMessage, sendMessage)
 
 type Config =
   { token :: String
@@ -68,7 +68,7 @@ main = launchAff do
     getMessages connection = do
       {event, push} <- create
       onMessage connection $ \fM -> case runExcept fM of
-        Right (Message m)
+        Right m
           | NullOrUndefined (Just text) <- m.text -> do
           push $ Query text
         _ -> do

@@ -3,7 +3,7 @@ module Main where
 import Prelude
 
 import ChocoPie (runChocoPie)
-import Control.Monad.Aff (Aff, launchAff, runAff)
+import Control.Monad.Aff (Aff, launchAff, launchAff_, runAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (log)
@@ -42,14 +42,10 @@ type LookupResponse =
   { results :: Array QualifiedName
   }
 
-yoloAff :: forall a e. Aff e a -> Eff e Unit
-yoloAff aff =
-  unit <$ runAff (const $ pure unit) (const $ pure unit) aff
-
 main :: Eff _ _
 main = launchAff do
   c <- readJSON <$> readTextFile UTF8 "./config.json"
-  case runExcept c of
+  case c of
     Right config -> do
       liftEff $ runChocoPie main_ (drivers config)
     Left e -> do
@@ -78,7 +74,7 @@ main = launchAff do
     bot :: Config -> Event Output -> Eff _ (Event Query)
     bot config outputs = do
       connection <- connect config.token
-      subscribe outputs $ \(Output output) ->
+      _ <- subscribe outputs $ \(Output output) ->
         sendMessage connection config.master output
       getMessages connection
 
@@ -87,13 +83,13 @@ main = launchAff do
     lookup :: Event Query -> Eff _ (Event Output)
     lookup queries = do
       {event, push} <- create
-      subscribe queries \(Query query) -> do
-        yoloAff do
+      _ <- subscribe queries \(Query query) -> do
+        launchAff_ do
           result <- text =<< fetch
             (baseUrl <> encodeURIComponent query)
             defaultFetchOptions
           let
-            output = case runExcept $ readJSON result of
+            output = case readJSON result of
               Right (lr :: LookupResponse) ->
                 "Got results! You might try these: " <>
                   (intercalate "\n" $ unwrap <$> take 10 (reverse lr.results))

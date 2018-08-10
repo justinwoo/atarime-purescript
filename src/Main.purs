@@ -3,19 +3,19 @@ module Main where
 import Prelude
 
 import ChocoPie (runChocoPie)
-import Control.Monad.Aff (Aff, launchAff, launchAff_, runAff)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Console (log)
 import Control.Monad.Except (runExcept)
 import Data.Array (intercalate, reverse, take)
 import Data.Either (Either(..))
-import Data.Foreign.NullOrUndefined (NullOrUndefined(..))
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap, wrap)
+import Effect (Effect)
+import Effect.Aff (launchAff_)
+import Effect.Class (liftEffect)
+import Effect.Console (log)
 import FRP.Event (Event, create, subscribe)
-import Global (encodeURIComponent)
-import Milkis (defaultFetchOptions, fetch, text)
+import Global.Unsafe (unsafeEncodeURIComponent)
+import Milkis (URL(..), defaultFetchOptions, fetch, text)
+import Milkis.Impl.Node (nodeFetch)
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (readTextFile)
 import Simple.JSON (class ReadForeign, readJSON)
@@ -42,14 +42,14 @@ type LookupResponse =
   { results :: Array QualifiedName
   }
 
-main :: Eff _ _
-main = launchAff do
+main :: Effect Unit
+main = launchAff_ do
   c <- readJSON <$> readTextFile UTF8 "./config.json"
   case c of
     Right config -> do
-      liftEff $ runChocoPie main_ (drivers config)
+      liftEffect $ runChocoPie main_ (drivers config)
     Left e -> do
-      liftEff $ log $ "Malformed config: " <> show e
+      liftEffect $ log $ "Malformed config: " <> show e
   where
     main_ sources =
       { bot: sources.lookup
@@ -65,13 +65,13 @@ main = launchAff do
       {event, push} <- create
       onMessage connection $ \fM -> case runExcept fM of
         Right m
-          | NullOrUndefined (Just text) <- m.text -> do
+          | (Just text) <- m.text -> do
           push $ Query text
         _ -> do
           log "can't do shit cap'n"
       pure event
 
-    bot :: Config -> Event Output -> Eff _ (Event Query)
+    bot :: Config -> Event Output -> Effect (Event Query)
     bot config outputs = do
       connection <- connect config.token
       _ <- subscribe outputs $ \(Output output) ->
@@ -80,13 +80,13 @@ main = launchAff do
 
     baseUrl = "https://compile.purescript.org/try/search?q="
 
-    lookup :: Event Query -> Eff _ (Event Output)
+    lookup :: Event Query -> Effect (Event Output)
     lookup queries = do
       {event, push} <- create
       _ <- subscribe queries \(Query query) -> do
         launchAff_ do
-          result <- text =<< fetch
-            (baseUrl <> encodeURIComponent query)
+          result <- text =<< fetch nodeFetch
+            (URL $ baseUrl <> unsafeEncodeURIComponent query)
             defaultFetchOptions
           let
             output = case readJSON result of
@@ -95,5 +95,5 @@ main = launchAff do
                   (intercalate "\n" $ unwrap <$> take 10 (reverse lr.results))
               Left e ->
                 "Couldn't parse non-result JSON: " <> show result
-          liftEff <<< push <<< wrap $ output
+          liftEffect <<< push <<< wrap $ output
       pure event

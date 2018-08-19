@@ -1,7 +1,7 @@
 {
   "name": "atarime-purescript",
-  "set": "rendang",
-  "source": "https://github.com/justinwoo/package-sets.git",
+  "set": "190818",
+  "source": "https://github.com/justinwoo/spacchetti.git",
   "depends": [
     "prelude",
     "console",
